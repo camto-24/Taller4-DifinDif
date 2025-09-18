@@ -1,6 +1,7 @@
----title: "Taller4_CamilaCaraballo_LauraRivera"
+---
+title: "Taller 4 - Diferencias en Diferencias"
 author: "Maria Camila Caraballo, Laura Sarif Rivera"
-date: "2025-09-17"
+date: "2025-09-19"
 output: 
   pdf_document:
     latex_engine: xelatex
@@ -15,24 +16,147 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE
 )
-knitr::opts_knit$set(root.dir = "C:/Users/mc-c2/OneDrive - Universidad de los andes/Universidad/MECA/Big Data y Machine Learning/Repositorios/BD_ML_taller_1/Taller4-DifinDif")
-```
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+knitr::opts_knit$set(root.dir = "C:/Users/mc-c2/OneDrive - Universidad de los andes/Universidad/MECA/Repositorios/Repositorio/Taller4-DifinDif")
 ```
 
-## Including Plots
+```{r results='asis', echo=FALSE}
+# Cargar liberias y paquetes
 
-You can also embed plots, for example:
+#install.packages("haven") 
+#install.packages("plm")
+#install.packages("skimr")
+#install.packages("dplyr")
+#install.packages("ggplot2")
+#install.packages("modelsummary")
+#install.packages("knitr")
+#install.packages("tinytex")
+#tinytex::install_tinytex()
+#install.packages("survey")
+library(knitr)
+library(haven)
+library(plm)
+library(scales)
+library(skimr)
+library(dplyr)
+library(ggplot2)
+library(AER)        
+library(fixest)
+library(lmtest)
+library(sandwich)
+library(tidyverse)
+library(stargazer)
+library(survey)
+
+# Leer archivo .dta
+data <- read_dta("SoapOperas2.dta")
+
+```
 
 ```{r pressure, echo=FALSE}
-plot(pressure)
+
+#Establecemos la semilla de replicabilidad
+set.seed(201613424)
+n <- nrow(data)
+
+#Seleccionar el 5% al azar
+elim <- sample(1:n, size = round(0.05 * n))
+
+#Redefinir la base sin lo seleccionado 
+data_trim <- data[-elim, ]
+
+#Restringir la nueva base al percentil 95
+p95 <- quantile(data_trim$geoarea80, probs = 0.95, na.rm = TRUE)
+data_final <- subset(data_trim, geoarea80 <= p95)
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Diferencias en Diferencias
+
+El propósito de este taller es replicar parte del análisis realizado por La Ferrara et al. (2012) en su estudio *“Soap Operas and Fertility: Evidence from Brazil”*, en el que se evalúa cómo la exposición a telenovelas incide en las decisiones reproductivas de las mujeres. A partir de la base de datos utilizada por los autores, se busca estimar el efecto de la llegada de la cadena Globo sobre la probabilidad de dar a luz y explorar posibles heterogeneidades según características como edad, educación y nivel socioeconómico. El ejercicio permitirá aplicar la metodología de Diferencias en Diferencias con regresiones y efectos fijos para interpretar empíricamente la relación entre medios de comunicación y comportamientos demográficos.
+
+### 1. Análisis introductorio
+
+**Con base en el artículo escriba la especificación principal de los autores en niveles y describan cada una de sus variables explicativas**
+
+$$ Y_{ijt} = X_{ijt}\beta + \gamma G_{ij} + \mu_j + \lambda_t+\epsilon_{ijt} $$
+
+Donde $y_{ijt}$ es igual a 1 si la mujer *i* que vive en el área *j* da a luz a un hijo en el año *t,* $G_{jt}$ es una variable dicótoma igual a 1 si el área *j* recibió la señal de Rede Globo al menos un año antes del año *t* (para reflejar la duración del embarazo); $X_{ijt}$ es un conjunto de controles que varían en el tiempo tanto a nivel individual como a nivel del área metropolitana (AMC); $\mu_j$ son efectos fijos por área AMC y $\lambda_t$ son efectos fijos del año. Una vez incluidos los efectos de área se controla por características inonservables e invariantes en el tiempo que pueden afectar la fertilidad y estar posiblemente relacionadas con la entrada de Globo.
+
+**¿Cuál es el supuesto de identificación detrás de este modelo?**
+
+De acuerdo con los autores, el supuesto de identificación para este modelo es que, condicional a los efectos fijos de área, de tiempo y los controles expresados en el vector $X_{ijt}$, el año de entrada de Globo es ortogonal al término de error. En este contexto, la ortogonalidad implica que la llegada de Globo al área no está relacionada con otros factores no observados que de alguna manera afectan la fertilidad. En general, esto garantiza que el efecto estimado de la presencia de Globo sobre la fertilidad se pueda interpretar como causal.
+
+**Estime el modelo sin controles y sin efectos fijos de área, sin controles pero con efectos fijos de área y con controles y efectos fijos de área. Analice y presente los resultados.[^1]**
+
+[^1]: Nota: para todos los modelos incluya efectos fijos de tiempo, ajuste por sobremuestreo (ponderando las observaciones por la variable *weight*) y clusterice errores por área.
+
+```{r}
+
+# Modelo 1: sin controles, sin efectos fijos de área, solo efectos fijos de tiempo
+m1 <- feols(B ~ globocoverage1 | year,        
+            data = data_final, 
+            weights = ~weight,    
+            cluster = ~amc_code)      
+
+# Modelo 2: sin controles, con efectos fijos de área y tiempo
+m2 <- feols(B ~ globocoverage1 | amc_code + year, 
+            data = data_final, 
+            weights = ~weight, 
+            cluster = ~amc_code)
+
+# Modelo 3: con controles + efectos fijos de área y tiempo
+m3 <- feols(B ~ globocoverage1 + age + agesq + yrs_edu + yrsedu_head + wealth_noTV + catholic + rural + Doctors + ipc_renta + stock + stocksq | amc_code + year, 
+            data = data_final, 
+            weights = ~weight, 
+            cluster = ~amc_code)
+
+coefs <- list(coef(m1), coef(m2), coef(m3))
+ses   <- list(se(m1, cluster = ~amc_code), 
+              se(m2, cluster = ~amc_code), 
+              se(m3, cluster = ~amc_code))
+
+# Resumen de resultados
+etable(
+  m1, m2, m3,
+  se = "cluster",            # usa la clusterización guardada en cada modelo
+  dict = c(
+    "globocoverage1" = "Cobertura Globo",
+    "age"            = "Edad",
+    "agesq"          = "Edad al cuadrado",
+    "yrs_edu"        = "Años de educación (mujer)",
+    "yrsedu_head"    = "Años de educación (jefe de hogar)",
+    "wealth_noTV"    = "Riqueza (sin TV)",
+    "catholic"       = "Católica",
+    "rural"          = "Rural",
+    "Doctors"        = "Doctores per cápita",
+    "ipc_renta"      = "Ingreso per cápita (IPC renta)",
+    "stock"          = "Stock de TV",
+    "stocksq"        = "Stock de TV al cuadrado"
+  ),
+  title = "Impacto de la cobertura de Globo sobre la fertilidad",
+  fitstat = ~ n + r2,
+  tex = TRUE
+)
+```
+
+### 2. Problemas de identificación
+
+Mencione dos de los retos de identificación mencionados por los autores sobre esta estimación y la forma como se puede corrregir con una técnica econométrica.
+
+A key challenge for our identification strategy is the possibility that Globo presence may be correlated with unobserved determinants of fertility. Because we employ area fixed effects in all regressions, the relevant concern is whether Globo entry may be correlated with pre-existing fertility trends. We address this issue in several ways. First, we regress fertility on a set of dummies going from nine years before Globo entry to nine years after. The results are displayed in Figure 4 (discussed below) and show that there is no decline in fertility before the year in which Globo enters, while fertility sharply declines one year after Globo enters. Second, using data from the 1970 census, we show that, after controlling for the same characteristics we use in our benchmark regression, the year of Globo entry is not correlated with the initial fertility level. Third, we conduct a series of placebo regressions and find that future Globo entry in an area does not predict current fertility; randomly generated years of Globo entry do not predict fertility; and Globo presence in neighboring areas does not predict local fertility. our results on content exploit variation within area-year or across years in a way that is intrinsically non-monotonic, and it would be difficult to explain those results as originating from trends.
+
+### 3. Estimación del modelo
+
+Estime el *modelo 3* del literal c, restringiendo los datos a aquellas mujeres con edad entre i. 15-24, ii. 25-34 y iii.35-44. Presente sus resultados en una misma tabla con cada modelo en una columna distinta.
+
+### 4. Efectos heterogéneos
+
+Elija una de las siguientes variables y estime un modelo con efectos heterogéneos
+
+-   Años de educación de la cabeza de hogar
+
+-   Años de educación de la mujer
+
+-   Riqueza del hogar
+
+Interprete los resultados del efecto heterogéneo estimado en el modelo y concluya sobre estos.
