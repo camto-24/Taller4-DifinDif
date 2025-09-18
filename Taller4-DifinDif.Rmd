@@ -52,7 +52,7 @@ data <- read_dta("SoapOperas2.dta")
 
 ```
 
-```{r pressure, echo=FALSE}
+```{r}
 
 #Establecemos la semilla de replicabilidad
 set.seed(201613424)
