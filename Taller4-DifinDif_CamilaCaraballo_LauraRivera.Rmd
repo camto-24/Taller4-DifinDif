@@ -311,7 +311,7 @@ cat(tabla_3, sep = "\n")
 ```
 \newpage
 
-Los resultados del modelo con interacción sugieren que la cobertura de Globo tiene un efecto negativo y significativo al 99% sobre la fertilidad, pero este impacto no es homogéneo entre todas las mujeres, sino que varía en función de su nivel educativo. Mientras que la educación, de manera independiente, ya está asociada con una menor probabilidad de tener hijos, el término de interacción evidencia que el efecto reductor de Globo es más pronunciado en los grupos con menor escolaridad.
+Los resultados del modelo con interacción sugieren que la cobertura de Globo tiene un efecto negativo y significativo al 99% sobre la fertilidad, pero este impacto no es homogéneo entre todas las mujeres, sino que varía en función de su nivel educativo. Mientras que la educación, de manera independiente, ya está asociada con una menor probabilidad de tener hijos, el término de interacción evidencia que el efecto reductor de Globo es más pronunciado en los grupos con mayor escolaridad.
 
 A medida que aumentan los años de escolaridad, el efecto de Globo sobre la reducción de la fertilidad se intensifica, siendo más marcado en mujeres con educación intermedia y alta. Esto sugiere que los contenidos transmitidos por Globo influyen con mayor fuerza en las decisiones reproductivas de las mujeres más educadas, quienes, gracias a su capital educativo, están en mejores condiciones de interpretar y apropiarse de los modelos familiares y proyectos de vida presentados en las telenovelas.
 
