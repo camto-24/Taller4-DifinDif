@@ -16,7 +16,7 @@ knitr::opts_chunk$set(
   message = FALSE,
   warning = FALSE
 )
-knitr::opts_knit$set(root.dir = "C:/Users/mc-c2/OneDrive - Universidad de los andes/Universidad/MECA/Repositorios/Repositorio/Taller4-DifinDif")
+knitr::opts_knit$set(root.dir = "C:/1. MECA/2025/EVALUACIACÓN DE IMPACTO- Raachid Raaj/Taller 4- Diiff and Diif/Taller4-DifinDif")
 
 tinytex::tlmgr_update(self = TRUE, all = TRUE)
 
