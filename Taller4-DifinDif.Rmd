@@ -22,30 +22,35 @@ knitr::opts_knit$set(root.dir = "C:/Users/mc-c2/OneDrive - Universidad de los an
 ```{r results='asis', echo=FALSE}
 # Cargar liberias y paquetes
 
-#install.packages("haven") 
-#install.packages("plm")
-#install.packages("skimr")
-#install.packages("dplyr")
-#install.packages("ggplot2")
-#install.packages("modelsummary")
-#install.packages("knitr")
-#install.packages("tinytex")
-#tinytex::install_tinytex()
-#install.packages("survey")
-library(knitr)
-library(haven)
-library(plm)
-library(scales)
-library(skimr)
-library(dplyr)
-library(ggplot2)
-library(AER)        
-library(fixest)
-library(lmtest)
-library(sandwich)
-library(tidyverse)
-library(stargazer)
-library(survey)
+# Instalando pacman si se requiere
+if (!require("pacman")) install.packages("pacman")
+
+# Cargando los paquetes usando pacman
+pacman::p_load(
+  
+  # A) Manipulación, limpieza y visualización de datos
+  tidyverse,    # Colección de paquetes esenciales (incluye dplyr, ggplot2, etc.)
+  dplyr,        # Manipulación de datos (ya incluido en tidyverse, pero lo dejamos explícito).
+  ggplot2,      # Visualización de datos (incluido en tidyverse).
+  scales,       # Manejo de escalas (ej. porcentajes, comas).
+  skimr,        # Resúmenes estadísticos rápidos de data.frames.
+  
+  # B) Modelado y análisis estadístico/econométrico
+  fixest,       # Modelos de efectos fijos de alto rendimiento.
+  plm,          # Modelos para datos de panel.
+  AER,          # Herramientas de econometría aplicada.
+  lmtest,       # Pruebas de hipótesis para modelos de regresión.
+  sandwich,     # Errores estándar robustos.
+  survey,       # Análisis de encuestas complejas.
+  
+  # C) Importación, exportación y generación de reportes
+  haven,        # Lectura/escritura de Stata, SAS, SPSS.
+  stargazer,    # Tablas de regresión con formato publicable.
+  knitr,        # Reportes dinámicos en RMarkdown.
+  modelsummary, # Tablas y resúmenes comparativos de modelos.
+  tinytex       # Soporte para compilar a PDF con LaTeX en RMarkdown.
+)
+
 
 # Leer archivo .dta
 data <- read_dta("SoapOperas2.dta")
@@ -54,17 +59,17 @@ data <- read_dta("SoapOperas2.dta")
 
 ```{r}
 
-#Establecemos la semilla de replicabilidad
+# Establecemos la semilla de replicabilidad
 set.seed(201613424)
-n <- nrow(data)
+n <- nrow(data) #Definir el tamaño de la base
 
-#Seleccionar el 5% al azar
+# Seleccionar el 5% al azar y eliminarlo de la base
 elim <- sample(1:n, size = round(0.05 * n))
 
-#Redefinir la base sin lo seleccionado 
+# Redefinir la base sin lo seleccionado 
 data_trim <- data[-elim, ]
 
-#Restringir la nueva base al percentil 95
+# Restringir la nueva base al percentil 95
 p95 <- quantile(data_trim$geoarea80, probs = 0.95, na.rm = TRUE)
 data_final <- subset(data_trim, geoarea80 <= p95)
 
@@ -86,9 +91,9 @@ Donde $y_{ijt}$ es igual a 1 si la mujer *i* que vive en el área *j* da a luz a
 
 De acuerdo con los autores, el supuesto de identificación para este modelo es que, condicional a los efectos fijos de área, de tiempo y los controles expresados en el vector $X_{ijt}$, el año de entrada de Globo es ortogonal al término de error. En este contexto, la ortogonalidad implica que la llegada de Globo al área no está relacionada con otros factores no observados que de alguna manera afectan la fertilidad. En general, esto garantiza que el efecto estimado de la presencia de Globo sobre la fertilidad se pueda interpretar como causal.
 
-**Estime el modelo sin controles y sin efectos fijos de área, sin controles pero con efectos fijos de área y con controles y efectos fijos de área. Analice y presente los resultados.[^1]**
+**Estime el modelo sin controles y sin efectos fijos de área, sin controles pero con efectos fijos de área y con controles y efectos fijos de área. Analice y presente los resultados.**[^1]
 
-[^1]: Nota: para todos los modelos incluya efectos fijos de tiempo, ajuste por sobremuestreo (ponderando las observaciones por la variable *weight*) y clusterice errores por área.
+[^1]: **Nota: para todos los modelos incluya efectos fijos de tiempo, ajuste por sobremuestreo (ponderando las observaciones por la variable *weight*) y clusterice errores por área.**
 
 ```{r}
 
@@ -110,15 +115,16 @@ m3 <- feols(B ~ globocoverage1 + age + agesq + yrs_edu + yrsedu_head + wealth_no
             weights = ~weight, 
             cluster = ~amc_code)
 
+# Guardar coeficientes y errores estándar
 coefs <- list(coef(m1), coef(m2), coef(m3))
 ses   <- list(se(m1, cluster = ~amc_code), 
               se(m2, cluster = ~amc_code), 
               se(m3, cluster = ~amc_code))
 
-# Resumen de resultados
+# Resumen comparativo de resultados
 etable(
   m1, m2, m3,
-  se = "cluster",            # usa la clusterización guardada en cada modelo
+  se = "cluster",
   dict = c(
     "globocoverage1" = "Cobertura Globo",
     "age"            = "Edad",
@@ -133,10 +139,20 @@ etable(
     "stock"          = "Stock de TV",
     "stocksq"        = "Stock de TV al cuadrado"
   ),
-  title = "Impacto de la cobertura de Globo sobre la fertilidad",
+  title   = "Impacto de la cobertura de Globo sobre la fertilidad",
   fitstat = ~ n + r2,
-  tex = TRUE
+  tex     = TRUE,
+  file    = "tablas/tabla1_controles.tex"   # se guarda en LaTeX
 )
+
+# Visualizar tabla en html
+etable(m1, m2, m3,
+       se = "cluster",
+       tex = FALSE,
+       file = "tablas/tabla1.html")
+
+# Visualizar tabla en la consola de R
+etable(m1, m2, m3, se = "cluster", tex = FALSE)
 ```
 
 ### 2. Problemas de identificación
@@ -149,6 +165,52 @@ A key challenge for our identification strategy is the possibility that Globo pr
 
 Estime el *modelo 3* del literal c, restringiendo los datos a aquellas mujeres con edad entre i. 15-24, ii. 25-34 y iii.35-44. Presente sus resultados en una misma tabla con cada modelo en una columna distinta.
 
+Rta: Los resultados muestran que el efecto de la cobertura de Globo sobre la fertilidad varía según el grupo de edad. Para mujeres de **15 a 24 años**, el coeficiente es negativo pero no significativo, lo que indica ausencia de evidencia robusta de un efecto. En contraste, para mujeres de **25 a 34 años** el coeficiente es negativo y significativo al 1%, sugiriendo que la exposición a Globo se asocia con una menor fertilidad en este grupo. Para mujeres de **35 a 44 años**, el efecto también es negativo y significativo al 5%, aunque de menor magnitud que en el grupo anterior.
+
+En general, los controles socioeconómicos mantienen los signos esperados (mayor educación femenina reduce la fertilidad en los grupos más jóvenes, mientras que la educación del jefe del hogar tiende a aumentarla; la riqueza sin TV y residir en áreas rurales presentan efectos significativos en diferentes direcciones). En conjunto, los hallazgos sugieren que la influencia de Globo es más marcada en las mujeres en edad reproductiva central (25–34), moderada en el grupo de 35–44, y prácticamente nula en las más jóvenes (15–24).
+
+```{r}
+# Modelo 3 para mujeres de 15–24
+m1_age <- feols(B ~ globocoverage1 + age + agesq + yrs_edu + yrsedu_head +
+                  wealth_noTV + catholic + rural + Doctors + ipc_renta + stock + stocksq | 
+                  amc_code + year,
+                data = subset(data_final, age >= 15 & age <= 24),
+                weights = ~weight,
+                cluster = ~amc_code)
+
+# Modelo 3 para mujeres de 25–34
+m2_age <- feols(B ~ globocoverage1 + age + agesq + yrs_edu + yrsedu_head +
+                  wealth_noTV + catholic + rural + Doctors + ipc_renta + stock + stocksq | 
+                  amc_code + year,
+                data = subset(data_final, age >= 25 & age <= 34),
+                weights = ~weight,
+                cluster = ~amc_code)
+
+# Modelo 3 para mujeres de 35–44
+m3_age <- feols(B ~ globocoverage1 + age + agesq + yrs_edu + yrsedu_head +
+                  wealth_noTV + catholic + rural + Doctors + ipc_renta + stock + stocksq | 
+                  amc_code + year,
+                data = subset(data_final, age >= 35 & age <= 44),
+                weights = ~weight,
+                cluster = ~amc_code)
+
+# Tabla de resultados de comparación de los modelos
+etable(m1_age, m2_age, m3_age,
+       se = "cluster",
+       cluster = ~amc_code,
+       dict = c(globocoverage1 = "Globo coverage"),
+       fitstat = ~n + r2,
+       tex = TRUE,
+        file = "tablas/tabla2_edades.tex")   #LaTeX
+
+# Tabla para visualizarla en la consola de R
+etable(m1_age, m2_age, m3_age,
+       se = "cluster",
+       cluster = ~amc_code,
+       dict = c(globocoverage1 = "Globo coverage"),
+       fitstat = ~n + r2)
+```
+
 ### 4. Efectos heterogéneos
 
 Elija una de las siguientes variables y estime un modelo con efectos heterogéneos
@@ -160,3 +222,27 @@ Elija una de las siguientes variables y estime un modelo con efectos heterogéne
 -   Riqueza del hogar
 
 Interprete los resultados del efecto heterogéneo estimado en el modelo y concluya sobre estos.
+
+Rta: El modelo con interacción muestra que la cobertura de Globo tiene un efecto negativo y significativo sobre la fertilidad, pero este impacto varía según el nivel educativo de la mujer. En particular, aunque la educación por sí misma reduce la probabilidad de tener hijos, el término de interacción revela que el efecto reductor de Globo es más fuerte entre mujeres con menor educación y se hace referencia conforme aumentan los años de escolaridad, llegando incluso a desaparecer en los niveles más altos.
+
+Finalmente, los resultados muestran que las mujeres con poca educación y más educación tiene un bajo indice de fertilidad pero las mujeres expuestas a Globo tienen menor número de hijos que las no expuestas y este efecto esta más marcado entre las mujeres con menor nivel educativo.
+
+```{r}
+# Se escoge los años de educación de la mujer para estimar el modelo con interacción
+m_hetero <- feols(B ~ globocoverage1 * yrs_edu + age + agesq + yrsedu_head +
+                    wealth_noTV + catholic + rural + Doctors + ipc_renta + stock + stocksq | 
+                    amc_code + year,
+                  data = data_final,
+                  weights = ~weight,
+                  cluster = ~amc_code)
+
+# Ver tabla en la consola
+etable(m_hetero, se = "cluster", cluster = ~amc_code)
+
+# Exportar tabla a LaTeX
+etable(m_hetero,
+       se = "cluster",
+       cluster = ~amc_code,
+       tex = TRUE,
+       file = "tablas/tabla3_heterogeneo.tex")
+```
